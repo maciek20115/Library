@@ -1,4 +1,5 @@
-import Anthropic from '@anthropic-ai/sdk';
+const MODEL = 'meta/llama-3.2-90b-vision-instruct';
+const API_URL = 'https://integrate.api.nvidia.com/v1/chat/completions';
 
 const ANALYSIS_PROMPT = `You are an expert technical analyst specializing in financial chart analysis. Analyze this trading chart screenshot and provide a comprehensive technical analysis report.
 
@@ -50,33 +51,43 @@ Return your response as a valid JSON object (no markdown, no code blocks, just r
 Be precise with price levels. If an indicator is not visible, omit it from the indicators array. Provide realistic, professional-grade analysis.`;
 
 export async function analyzeChart(imageBase64, mimeType, apiKey) {
-  const client = new Anthropic({ apiKey, dangerouslyAllowBrowser: true });
-
-  const response = await client.messages.create({
-    model: 'claude-opus-4-6',
-    max_tokens: 2048,
-    messages: [
-      {
-        role: 'user',
-        content: [
-          {
-            type: 'image',
-            source: {
-              type: 'base64',
-              media_type: mimeType,
-              data: imageBase64,
+  const response = await fetch(API_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model: MODEL,
+      max_tokens: 2048,
+      messages: [
+        {
+          role: 'user',
+          content: [
+            {
+              type: 'image_url',
+              image_url: {
+                url: `data:${mimeType};base64,${imageBase64}`,
+              },
             },
-          },
-          {
-            type: 'text',
-            text: ANALYSIS_PROMPT,
-          },
-        ],
-      },
-    ],
+            {
+              type: 'text',
+              text: ANALYSIS_PROMPT,
+            },
+          ],
+        },
+      ],
+    }),
   });
 
-  const text = response.content[0].text.trim();
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err?.message || `API error ${response.status}`);
+  }
+
+  const data = await response.json();
+  const text = data.choices?.[0]?.message?.content?.trim();
+  if (!text) throw new Error('Empty response from model');
   const jsonMatch = text.match(/\{[\s\S]*\}/);
   if (!jsonMatch) throw new Error('No JSON found in response');
   return JSON.parse(jsonMatch[0]);

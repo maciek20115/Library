@@ -67,9 +67,9 @@ export default function App() {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 bg-[#00c853]/10 border border-[#00c853]/20 rounded-full">
-              <div className="w-1.5 h-1.5 rounded-full bg-[#00c853] animate-pulse" />
-              <span className="text-xs text-[#00c853] font-mono">Claude Opus 4.6</span>
+            <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 bg-[#76b900]/10 border border-[#76b900]/20 rounded-full">
+              <div className="w-1.5 h-1.5 rounded-full bg-[#76b900] animate-pulse" />
+              <span className="text-xs text-[#76b900] font-mono">Llama 3.2 90B Vision</span>
             </div>
             <button
               onClick={() => setShowKeyModal(true)}
