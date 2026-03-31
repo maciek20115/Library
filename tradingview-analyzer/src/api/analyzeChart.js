@@ -1,5 +1,5 @@
-const MODEL = 'gemini-2.0-flash';
-const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`;
+const BASE_URL = 'https://integrate.api.nvidia.com/v1';
+const MODEL = 'qwen/qwen2.5-vl-72b-instruct';
 
 const ANALYSIS_PROMPT = `You are an expert technical analyst specializing in financial chart analysis. Analyze this trading chart screenshot and provide a comprehensive technical analysis report.
 
@@ -51,40 +51,44 @@ Return your response as a valid JSON object (no markdown, no code blocks, just r
 Be precise with price levels. If an indicator is not visible, omit it from the indicators array. Provide realistic, professional-grade analysis.`;
 
 export async function analyzeChart(imageBase64, mimeType, apiKey) {
-  const response = await fetch(`${API_URL}?key=${apiKey}`, {
+  const response = await fetch(`${BASE_URL}/chat/completions`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${apiKey}`,
+    },
     body: JSON.stringify({
-      contents: [
+      model: MODEL,
+      max_tokens: 2048,
+      temperature: 0.2,
+      messages: [
         {
-          parts: [
+          role: 'user',
+          content: [
             {
-              inline_data: {
-                mime_type: mimeType,
-                data: imageBase64,
+              type: 'image_url',
+              image_url: {
+                url: `data:${mimeType};base64,${imageBase64}`,
               },
             },
             {
+              type: 'text',
               text: ANALYSIS_PROMPT,
             },
           ],
         },
       ],
-      generationConfig: {
-        maxOutputTokens: 2048,
-        temperature: 0.2,
-      },
     }),
   });
 
   if (!response.ok) {
     const err = await response.json().catch(() => ({}));
-    const msg = err?.error?.message || `API error ${response.status}`;
+    const msg = err?.detail || err?.message || `API error ${response.status}`;
     throw new Error(msg);
   }
 
   const data = await response.json();
-  const text = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+  const text = data.choices?.[0]?.message?.content?.trim();
   if (!text) throw new Error('Empty response from model');
   const jsonMatch = text.match(/\{[\s\S]*\}/);
   if (!jsonMatch) throw new Error('No JSON found in response');
